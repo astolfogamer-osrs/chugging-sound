@@ -1,17 +1,12 @@
 package com.chuggingsound;
 
 import com.google.inject.Provides;
-import java.io.BufferedInputStream;
-import java.io.InputStream;
 import javax.inject.Inject;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Clip;
-import javax.sound.sampled.FloatControl;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.events.AreaSoundEffectPlayed;
 import net.runelite.api.events.SoundEffectPlayed;
+import net.runelite.client.audio.AudioPlayer;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
@@ -34,41 +29,13 @@ public class ChuggingSoundPlugin extends Plugin
 	@Inject
 	private ChuggingSoundConfig config;
 
-	private Clip clip;
+	@Inject
+	private AudioPlayer audioPlayer;
 
 	@Provides
 	ChuggingSoundConfig provideConfig(ConfigManager configManager)
 	{
 		return configManager.getConfig(ChuggingSoundConfig.class);
-	}
-
-	@Override
-	protected void startUp() throws Exception
-	{
-		try (InputStream in = ChuggingSoundPlugin.class.getResourceAsStream("chug.wav"))
-		{
-			if (in == null)
-			{
-				log.warn("chug.wav nao encontrado em resources/com/chuggingsound/");
-				return;
-			}
-
-			try (AudioInputStream audio = AudioSystem.getAudioInputStream(new BufferedInputStream(in)))
-			{
-				clip = AudioSystem.getClip();
-				clip.open(audio);
-			}
-		}
-	}
-
-	@Override
-	protected void shutDown()
-	{
-		if (clip != null)
-		{
-			clip.close();
-			clip = null;
-		}
 	}
 
 	// som tocado pelo proprio jogador
@@ -95,28 +62,22 @@ public class ChuggingSoundPlugin extends Plugin
 
 	private void play()
 	{
-		if (clip == null)
-		{
-			return;
-		}
-		applyVolume();
-		clip.stop();
-		clip.setFramePosition(0);
-		clip.start();
-	}
-
-	private void applyVolume()
-	{
-		if (!clip.isControlSupported(FloatControl.Type.MASTER_GAIN))
+		int volume = config.volume();
+		if (volume <= 0)
 		{
 			return;
 		}
 
-		FloatControl gain = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
-		float volume = config.volume() / 100f;
-		float db = volume <= 0f
-			? gain.getMinimum()
-			: Math.max(gain.getMinimum(), Math.min(gain.getMaximum(), 20f * (float) Math.log10(volume)));
-		gain.setValue(db);
+		// converte 0-100 para ganho em dB (100 = 0 dB, sem alteracao)
+		float gain = 20f * (float) Math.log10(volume / 100f);
+
+		try
+		{
+			audioPlayer.play(ChuggingSoundPlugin.class, "chug.wav", gain);
+		}
+		catch (Exception e)
+		{
+			log.warn("Nao foi possivel tocar o som", e);
+		}
 	}
 }
