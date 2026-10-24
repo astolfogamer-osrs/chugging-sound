@@ -1,6 +1,7 @@
 package com.chuggingsound;
 
 import com.google.inject.Provides;
+import java.util.concurrent.ThreadLocalRandom;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -22,6 +23,16 @@ public class ChuggingSoundPlugin extends Plugin
 {
 	// herblore_pre_pot_drink_01 (som de beber do chugging barrel)
 	private static final int CHUGGING_DRINK_SOUND = 9491;
+
+	// arquivos de som em src/main/resources/com/chuggingsound/ (um deles e escolhido aleatoriamente)
+	private static final String[] SOUNDS = {
+		"chug.wav",
+		"chug2.wav",
+		"chug3.wav",
+		"chug4.wav",
+		"chug5.wav",
+		"chug6.wav"
+	};
 
 	@Inject
 	private Client client;
@@ -71,13 +82,15 @@ public class ChuggingSoundPlugin extends Plugin
 		// converte 0-100 para ganho em dB (100 = 0 dB, sem alteracao)
 		float gain = 20f * (float) Math.log10(volume / 100f);
 
+		String sound = SOUNDS[ThreadLocalRandom.current().nextInt(SOUNDS.length)];
+
 		try
 		{
-			audioPlayer.play(ChuggingSoundPlugin.class, "chug.wav", gain);
+			audioPlayer.play(ChuggingSoundPlugin.class, sound, gain);
 		}
 		catch (Exception e)
 		{
-			log.warn("Nao foi possivel tocar o som", e);
+			log.warn("Nao foi possivel tocar o som {}", sound, e);
 		}
 	}
 }
